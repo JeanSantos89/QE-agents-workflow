@@ -1,89 +1,132 @@
-# QA workflow for Claude Code
+# QE agents workflow
 
-A QA workflow built as Claude Code configuration: one slash command, one skill, and seven
-subagents that take a QA analyst from "here are the ticket links" to "the card is in
-product review, with evidence attached".
+A quality engineering workflow built entirely as agent configuration: one slash command,
+one skill, and seven subagents that carry a ticket from *"here are the links"* to *"the card
+is in product review, with evidence attached"*.
 
-It is opinionated about one thing: **the agent never decides what a human should decide.**
-There are three hard stops in the flow — approving the test lists, committing code, and
-committing to the QA memory base. Everything between them is automated.
+No framework, no dependencies, no code to run. It's Markdown — prompts with sharp
+boundaries.
 
-Tools referenced are real and interchangeable: Jira (tracker + wiki), Tuskr (manual test
-case management), Playwright (automation), GitHub Actions (CI). Nothing here is specific to
-a particular company, product, or repository — all of that is configuration.
+## Why this exists
+
+Most attempts to put an agent in a QA workflow fail the same two ways: the agent invents
+context it doesn't have, and it declares success it never verified. This workflow is built
+against both.
+
+**It refuses to guess.** The context agent reads a curated memory base first and, when that
+memory doesn't cover the request, emits an explicit `NEEDS_LIVE_CONTEXT` signal instead of
+filling the gap with plausible text. If the recon can't find the commit for a ticket, it
+says "commit not located" — the prompt forbids inventing one.
+
+**It refuses to claim a pass.** No test is reported ready without the test runner's real
+output pasted into the report. A declared PASS is not a PASS.
+
+**It never decides what a human should decide.** Three hard stops, marked ⏸: approving the
+test lists, committing code, and committing to the memory base. Everything between them is
+automated; none of them is ever crossed alone.
+
+And it closes the loop — the validated business rule goes back into the memory base at the
+end of every run, so the next run starts better informed than the last. That's the part
+most setups skip, and it's the reason the memory base is worth having at all.
+
+## The flow
+
+```
+/qa-run <ticket links>
+   ├─ context (memory first → live lookup only if needed)
+   ├─ repo recon in parallel (commit / assignee / files / endpoints touched)
+   ├─ two lists: manual MVP + API/contract
+   └─ ⏸ you approve → the spec is frozen as shared subagent memory
+          ├─ /tuskr-import → CSV for the test manager
+          └─ "start the automated ones" → scout → author → healer
+                 └─ ⏸ you commit
+                        └─ /jira-comment → evidence, comment, transition
+                               └─ ⏸ you approve the memory diff
+```
+
+Full detail, including the pitfalls at each step, is in **[WORKFLOW.md](WORKFLOW.md)**.
+
+## The seven subagents
+
+Each one has a narrow scope and a defined refusal.
+
+| Agent | Role | Refuses to |
+|---|---|---|
+| `qa-context` | Reads the curated QA memory; cross-references coverage, contradictions, inherited risk | Invent a behavior — signals the gap instead |
+| `live-context` | Fetches live context from the tracker and wiki when memory falls short | Report documentation it didn't find |
+| `create-tests` | Turns context into manual cases grouped by suite | Look anything up on its own, or restate a criterion twice |
+| `automation-scout` | Maps how the automation repo already does things — patterns, auth, fixtures, tags | Write anything; suggest a mutation against production |
+| `api-test-author` | Writes the minimum viable API/contract tests and validates them | Commit; report ready without the pasted runner output |
+| `test-healer` | Classifies a failure as app bug vs. flaky test | Loosen an assertion to hide a real bug |
+| `tuskr-import` | Exports the manual cases to CSV | Need an API token for a CSV-only path |
 
 ## What's in here
 
-| Path | What it is |
-|---|---|
-| `WORKFLOW.md` | The end-to-end flow, step by step, with the stop points |
-| `.claude/commands/qa-run.md` | `/qa-run <ticket links>` — the orchestrator entry point |
-| `.claude/skills/jira-comment/` | Closing a ticket: evidence → comment → transition |
-| `.claude/agents/*.md` | The seven subagents (context, test design, automation, healing, export) |
-| `.env.example` | Every value you need to configure |
+```
+README.md          WORKFLOW.md          .env.example
+.claude/
+  commands/qa-run.md                    the orchestrator entry point
+  skills/jira-comment/                  evidence → comment → transition
+  agents/*.md                           the seven subagents
+```
 
-## The subagents
-
-| Agent | Role | Access |
-|---|---|---|
-| `qa-context` | Reads the local curated QA memory first; signals a gap instead of guessing | read-only |
-| `gi-context` | Fetches live context from the tracker and wiki when memory doesn't cover it | read-only |
-| `create-tests` | Turns consolidated context into manual test cases grouped by suite | — |
-| `automation-scout` | Maps how the automation repo already does things | read-only |
-| `api-test-author` | Writes the minimum viable API/contract tests, validates them | writes tests, never commits |
-| `test-healer` | Classifies a failure as app bug vs. flaky test — never masks a real bug | writes fixes only for flaky tests |
-| `tuskr-import` | Exports manual cases to CSV for manual import | writes a CSV |
-
-`gi-context` keeps its name for continuity with the agent that consumes it; rename freely.
+Tools named are real and swappable: Jira as tracker and wiki, Tuskr for manual test cases,
+Playwright for automation, GitHub Actions for CI. Nothing is tied to a specific company,
+product, or repository — all of that is configuration.
 
 ## Setup
 
-1. Copy `.claude/` into your project (or into `~/.claude/` for a personal setup).
-2. Copy `.env.example` to `.env` and fill it in. The workflow reads these as environment
-   variables — nothing is hard-coded to one tracker site or project key.
-3. For the Jira attachment step, create an API token at
-   `id.atlassian.com/manage-profile/security/api-tokens` and set `JIRA_TOKEN` in your
-   shell. Do not put it in a file that gets committed.
-4. Point `QA_MEMORY_PATH` at your curated QA knowledge base if you have one. If you don't,
-   `qa-context` will always signal a gap and the flow falls through to live lookup — that
-   works fine, it just doesn't accumulate.
+1. Copy `.claude/` into your project, or into `~/.claude/` for a personal setup.
+2. Copy `.env.example` to `.env` and fill it in. Every site, project key, repo, path, and
+   environment tag is a variable — nothing is hard-coded.
+3. For the attachment step, create a Jira API token at
+   `id.atlassian.com/manage-profile/security/api-tokens` and set `JIRA_TOKEN` **in your
+   shell**, never in a committed file.
+4. Point `QA_MEMORY_PATH` at your curated knowledge base. Don't have one? Leave it empty —
+   `qa-context` will signal a gap every time and the flow falls through to live lookup. It
+   works; it just doesn't accumulate.
 
 ## Adapting it
 
-**Different tracker?** The context agents talk to the tracker through an MCP server. Swap
-the tool names in `gi-context.md` and `jira-comment/SKILL.md`; the flow doesn't change.
+**Different tracker.** The context agents reach the tracker through an MCP server. Swap the
+tool names in `live-context.md` and `jira-comment/SKILL.md`; the flow is unchanged.
 
-**Different test manager?** `tuskr-import` writes a four-column CSV. Change the header to
-match your importer's format.
+**Different test manager.** `tuskr-import` writes a four-column CSV. Change the header to
+whatever your importer expects.
 
-**No automation repo yet?** `automation-scout` reports "greenfield" and proposes a minimal
-structure instead of inventing patterns. That's the intended behavior.
+**No automation repo yet.** `automation-scout` reports "greenfield" and proposes a minimal
+structure rather than inventing patterns. That's intended behavior, not a failure.
 
-**Environment tags.** The automation side assumes a tag convention that decides what runs
-where — read-only cases against production, mutations staging-only, and a tag for tests
-that need internal network access so CI can exclude them. Names are yours; the rule that
+**Your own tag convention.** The automation side assumes tags decide what runs where:
+read-only cases against production, mutations staging-only, and a tag for tests needing
+internal network access so CI can exclude them. The names are yours. The rule that
 production is read-only is not negotiable in these prompts.
 
 ## Lessons worth keeping
 
-Things that cost real debugging time and generalize to any similar setup:
+Each of these cost real debugging time, and none is specific to this setup.
 
-- **An OAuth-based MCP connection to your tracker may not expose the credential, and may
-  have no attachment tool at all.** File attachment then needs a separate API token in an
-  environment variable — not a gap in the workflow, just a different path.
-- **File upload through MCP generally requires the content inline as base64.** For a
-  multi-hundred-KB PDF that's unworkable. The fix is a local script that reads the file
-  from disk, so the file content never passes through the model.
-- **PowerShell 5.1 reads `.ps1` files as ANSI.** A path with an accented character written
-  literally inside the script breaks. Locate files with `Get-ChildItem -Recurse -Filter`
-  instead of hard-coding the path.
-- **A token typed into a command lands in the session transcript** in plain text. Rotate
-  periodically, and prefer setting it outside the session.
-- **Never let an agent report "done" without pasting the runner's real output.** A declared
-  pass is not a pass. The `api-test-author` prompt enforces this explicitly.
+- **An OAuth-based MCP connection to your tracker may expose no credential and no
+  attachment tool at all.** Attaching a file then needs a separate API token in an
+  environment variable. Not a gap in the workflow — a different path.
+- **File upload through MCP generally wants the content inline as base64.** For a
+  several-hundred-KB PDF that is not transmittable. The fix is a local script that reads the
+  file from disk, so its content never passes through the model.
+- **PowerShell 5.1 reads `.ps1` files as ANSI.** An accented character in a path literal
+  inside the script breaks it. Locate files with `Get-ChildItem -Recurse -Filter` instead of
+  hard-coding paths.
+- **A token typed into a command lands in the session transcript** in plain text. Set it
+  outside the session, and rotate it periodically.
 - **Discover workflow transition IDs at runtime.** Hard-coded status and transition IDs
-  break the first time someone edits the workflow.
+  break the first time somebody edits the workflow — and they leak your instance's internals
+  into the repo.
+- **Give each subagent a self-contained briefing.** Subagents don't see the orchestrator's
+  conversation. That's why the approved list is frozen into a spec file first: the spec is
+  their context, and without it they improvise.
+- **Pending is not failing.** If the code isn't deployed yet, production cases are written
+  and tagged but not executed — recorded for a post-deploy sweep. Running them early
+  produces false negatives and erodes trust in the suite.
 
 ## License
 
-MIT.
+[MIT](LICENSE).

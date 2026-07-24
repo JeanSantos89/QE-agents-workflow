@@ -1,5 +1,5 @@
 ---
-name: gi-context
+name: live-context
 description: >
   Fetches live technical context for the product from a tracker ticket or a free-form
   question. Queries the wiki space and the tracker project via the Atlassian MCP and

@@ -5,7 +5,7 @@ From ticket links to a card in product review with evidence attached. Three poin
 
 ```
 /qa-run <ticket links>
-   ├─ 1. Context (qa-context → gi-context if memory doesn't cover it)
+   ├─ 1. Context (qa-context → live-context if memory doesn't cover it)
    ├─ 2. Repo recon in parallel (commit / assignee / files / endpoints)
    ├─ 3. Two lists: manual MVP + API/contract
    └─ 4. ⏸ CONSENSUS — you approve the lists
@@ -41,7 +41,7 @@ Accepts tracker and wiki links, and more than one ticket in the same call.
    cross-references the request against what is already known: existing coverage,
    contradictions, inherited risk. If memory doesn't cover it, the agent returns
    `NEEDS_LIVE_CONTEXT` and the orchestrator goes to the tracker and wiki via MCP
-   (`gi-context`). Output: objective, scope, and what the MVP is.
+   (`live-context`). Output: objective, scope, and what the MVP is.
 2. **Repo recon** (in parallel) — across the configured repositories: find the assignee,
    search for the change commit by issue key, list the touched files, and identify which
    endpoints were affected. If the commit isn't found, the agent says **"commit not

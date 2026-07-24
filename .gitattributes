@@ -1,0 +1,6 @@
+# This repository is a set of agent prompts, not an application.
+# Markdown is the actual content, so make it count in the language bar; the single
+# helper script shouldn't represent the repo.
+*.md  linguist-detectable=true
+*.md  linguist-documentation=false
+*.ps1 linguist-detectable=false

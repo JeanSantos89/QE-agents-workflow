@@ -12,7 +12,7 @@ user says "start the automated ones" (the `api-test-author` agent).
 
 ### 1. Context
 - Call `qa-context` (curated local memory) for the story behind the links.
-- If it returns `NEEDS_LIVE_CONTEXT`, call `gi-context` (tracker/wiki via MCP).
+- If it returns `NEEDS_LIVE_CONTEXT`, call `live-context` (tracker/wiki via MCP).
 - Summarize the ticket in a few lines: objective, scope, what the MVP is.
 
 ### 2. Repo recon (in parallel with context)

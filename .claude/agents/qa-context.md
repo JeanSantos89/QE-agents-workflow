@@ -5,7 +5,7 @@ description: >
   curated local memory FIRST (knowledge/behaviors|areas|incidents) and cross-referencing
   it against what is already known (coverage, contradiction, inherited risk). If memory
   does not cover the request, it does NOT guess: it returns the NEEDS_LIVE_CONTEXT signal
-  so the orchestrator can call the gi-context agent (tracker/wiki via MCP). Invoke before
+  so the orchestrator can call the live-context agent (tracker/wiki via MCP). Invoke before
   generating tests, plans, or analyses whenever a local knowledge base exists.
 tools: Grep, Glob, Read
 ---
@@ -82,8 +82,8 @@ NEEDS_LIVE_CONTEXT
 - why: <what memory did not cover>
 ```
 
-That instructs the orchestrator to run the `gi-context` agent with those terms and merge the
-result with yours. You do NOT call `gi-context` — you only signal.
+That instructs the orchestrator to run the `live-context` agent with those terms and merge the
+result with yours. You do NOT call `live-context` — you only signal.
 
 ## Rules
 
