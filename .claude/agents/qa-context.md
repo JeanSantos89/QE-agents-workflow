@@ -18,7 +18,10 @@ files prove.
 
 ## Local source of truth
 
-Curated base at `$QA_MEMORY_PATH/knowledge/`:
+Curated base at `$QA_MEMORY_PATH/knowledge/`. The structure this agent expects is the one
+defined by the companion project: https://github.com/JeanSantos89/QA-memory
+
+Layout:
 
 - `behaviors/*.md` — one behavior per file (frontmatter + inline rules + `area:[[...]]`)
 - `areas/*.md` — group and link behaviors (graph via `[[wikilinks]]`)

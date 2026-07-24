@@ -181,7 +181,8 @@ left pending, with the reason.
 
 A **fixed** step, not optional: the QA memory base at `$QA_MEMORY_PATH` gets fed what the
 run validated. `qa-context` reads that base at the start of every run — without feeding it
-at the end, it never learns.
+at the end, it never learns. The base is a separate project:
+[QA-memory](https://github.com/JeanSantos89/QA-memory).
 
 Curation filter (business rules only):
 

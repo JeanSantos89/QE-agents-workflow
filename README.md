@@ -26,8 +26,9 @@ test lists, committing code, and committing to the memory base. Everything betwe
 automated; none of them is ever crossed alone.
 
 And it closes the loop — the validated business rule goes back into the memory base at the
-end of every run, so the next run starts better informed than the last. That's the part
-most setups skip, and it's the reason the memory base is worth having at all.
+end of every run, so the next run starts better informed than the last. That's the part most
+setups skip, and it's the reason the memory base is worth having at all. The memory base
+itself is a separate project: **[QA-memory](https://github.com/JeanSantos89/QA-memory)**.
 
 ## The flow
 
@@ -82,9 +83,12 @@ product, or repository — all of that is configuration.
 3. For the attachment step, create a Jira API token at
    `id.atlassian.com/manage-profile/security/api-tokens` and set `JIRA_TOKEN` **in your
    shell**, never in a committed file.
-4. Point `QA_MEMORY_PATH` at your curated knowledge base. Don't have one? Leave it empty —
-   `qa-context` will signal a gap every time and the flow falls through to live lookup. It
-   works; it just doesn't accumulate.
+4. Point `QA_MEMORY_PATH` at your curated knowledge base. The structure `qa-context` expects
+   is the companion project — **[QA-memory](https://github.com/JeanSantos89/QA-memory)**:
+   one behavior per file, areas linking them through wikilinks, incidents for real
+   regressions, searched with plain grep. Don't have one? Leave it empty — `qa-context` will
+   signal a gap every time and the flow falls through to live lookup. It works; it just
+   doesn't accumulate.
 
 ## Adapting it
 
