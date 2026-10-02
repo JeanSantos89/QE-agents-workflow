@@ -8,22 +8,31 @@ From ticket links to a card in product review with evidence attached. Three poin
    ├─ 1. Context (qa-context → live-context if memory doesn't cover it)
    ├─ 2. Repo recon in parallel (commit / assignee / files / endpoints)
    ├─ 3. Two lists: manual MVP + API/contract
-   └─ 4. ⏸ CONSENSUS — you approve the lists
-          └─ 5. Freeze api-tests-spec.md
-                 ├─ /tuskr-import ──────────► CSV for manual import
+   ├─ 4. /challenge-test-cases — requirement + hallucination judges
+   └─ 5. ⏸ CONSENSUS — you approve the lists
+          └─ 6. Freeze api-tests-spec.md
                  └─ "start the automated ones"
-                        ├─ 6. automation-scout → api-test-author
-                        ├─ 7. Run staging, then production (read-only)
+                        ├─ 7. automation-scout → api-test-author
+                        ├─ 8. Run staging, then production (read-only)
                         ├─    test-healer if something breaks
-                        └─ 8. ⏸ COMMIT — you commit
-                              └─ 9. Manual execution (you) → evidence PDF
-                                    └─ 10. /jira-comment
+                        └─ 9. ⏸ COMMIT — you commit
+                              └─ 10. Manual execution (you) → evidence PDF
+                                    └─ 11. /jira-comment
+                                          ├─ link the commit in the dev panel
                                           ├─ attach the PDF to each ticket
                                           ├─ one comment per ticket
                                           └─ transition to product review
-                                                └─ 11. Feed the QA memory base
+                                                └─ 12. Feed the QA memory base
                                                       └─ ⏸ diff before committing
 ```
+
+Manual cases stay in the frozen spec file approved at step 5 — there's no separate export
+step; whatever test manager you use reads the approved list directly, or you transcribe it
+once case-by-case.
+
+Two more skills run outside this loop: `/reconcile-pending-prod-tests`, after a deploy, to
+recover coverage that was disabled pending it; and `/test-plan-report`, to turn a finished
+evidence file into a filled-out report template.
 
 ---
 
@@ -64,25 +73,30 @@ covers it and the API list is empty. Saying "zero" is the correct answer there, 
 
 ---
 
-## Step 3 — ⏸ Consensus
+## Step 3 — The anti-slop gate
+
+Before you ever see the lists for approval, `/challenge-test-cases` runs two independent
+judges in parallel, each in a clean context: one checks every case against the acceptance
+criteria (gaps, redundancy), the other checks every cited name against the real source
+code (hallucination). Both return keep / rewrite / cut, with a cited source — see
+[the skill itself](.claude/skills/challenge-test-cases/SKILL.md) for the full mechanics.
+Verdicts are a recommendation; you still decide what survives.
+
+## Step 4 — ⏸ Consensus
 
 The lists get adjusted until you approve them. Nothing is automated before that.
 
 With an **explicit OK**, the contract is frozen at `$AUTOMATION_REPO_PATH/api-tests-spec.md`:
 context, commit/assignee/files/APIs, repo conventions, and the approved API list (title +
 what to validate + environment). That file is the shared memory of the automation
-subagents — they don't see the conversation, only the spec.
+subagents — they don't see the conversation, only the spec. The manual list is also frozen
+there — nothing exports it elsewhere automatically.
 
-From here the flow forks into two independent paths:
-
-- **Manual** → `/tuskr-import` generates the CSV (`Suite,Title,Steps,Expected Result`) for
-  you to import. The test manager here is **CSV only** — no API token, so no automatic test
-  run creation.
-- **Automated** → you say **"start the automated ones"**.
+From here: you say **"start the automated ones"** to continue into automation.
 
 ---
 
-## Step 4 — Automation (only when you ask)
+## Step 5 — Automation (only when you ask)
 
 1. `automation-scout` (read-only) maps how the automation repo does things: patterns, auth,
    fixtures, environment tag convention.
@@ -103,7 +117,7 @@ not a failure and does not block the merge request.
 
 ---
 
-## Step 5 — Manual execution and evidence
+## Step 6 — Manual execution and evidence
 
 You run the manual cases in the test manager and export the result as a PDF. Suggested
 convention:
@@ -116,16 +130,25 @@ One PDF can cover several runs.
 
 ---
 
-## Step 6 — Closing the tickets (`/jira-comment`)
+## Step 7 — Closing the tickets (`/jira-comment`)
 
 ```
 /jira-comment PROJ-123 PROJ-124 PROJ-125 "<path to the PDF>"
 ```
 
-Works standalone or as the final step of `/qa-run`. **Mandatory order — evidence, comment,
-transition.** A card is never moved before it has a comment.
+Works standalone or as the final step of `/qa-run`. **Mandatory order — link the commit,
+evidence, comment, transition.** A card is never moved before it has a comment, and the
+commit is never linked in the same batch as the transition.
 
-### 6.1 Attaching the evidence
+### 7.0 Linking the commit
+
+The real link lives in the tracker's own development panel, created by the **ticket key
+in the commit message** — not by anything this skill posts after the fact. Before
+committing, put the key in the title (`PROJ-123: <summary>`); after pushing, verify the
+panel picked it up before moving on. If it didn't, that's reported as-is — never
+compensated with a link pasted into the comment instead.
+
+### 7.1 Attaching the evidence
 
 The PDF is attached **to the ticket itself**, via the tracker's REST API
 (`POST /rest/api/3/issue/{key}/attachments`). The upload runs locally — PowerShell reads
@@ -147,7 +170,7 @@ locate it and use the shareable link in the comment. The agent cannot upload it 
 MCP file upload requires the content inline as base64, which is unworkable for a PDF of
 several hundred KB.
 
-### 6.2 The comment — one per ticket, never two
+### 7.2 The comment — one per ticket, never two
 
 Structure:
 
@@ -162,7 +185,7 @@ Structure:
 No separate commit-only comment: the tracker's development panel already associates commits
 natively.
 
-### 6.3 Transition
+### 7.3 Transition
 
 The transition whose destination is the product review status is **discovered at runtime**
 (`getTransitionsForJiraIssue`) and applied to each ticket. Transition and status IDs are
@@ -177,7 +200,7 @@ left pending, with the reason.
 
 ---
 
-## Step 7 — Closing the loop in the QA memory base
+## Step 8 — Closing the loop in the QA memory base
 
 A **fixed** step, not optional: the QA memory base at `$QA_MEMORY_PATH` gets fed what the
 run validated. `qa-context` reads that base at the start of every run — without feeding it
@@ -206,7 +229,7 @@ Curation filter (business rules only):
 | `JIRA_TOKEN` is per session | It will be asked for again in a new session unless set persistently. |
 | A command typed with `!` lands in the transcript | The token is recorded in plain text in the session history. Rotate it periodically. |
 | No accented path literal inside a `.ps1` | PowerShell 5.1 reads the script as ANSI and the path breaks. The script locates the PDF with `Get-ChildItem -Recurse -Filter`. |
-| Test manager without an API | CSV import only; running the manual cases and exporting the PDF are yours. |
+| Manual cases have no dedicated export step | Running them and exporting the evidence PDF are yours; the frozen spec file is the source of truth for whatever test manager you use. |
 | No automatic push or destructive git | Commits and pushes are always yours, or require explicit authorization. |
 
 ---
@@ -216,7 +239,9 @@ Curation filter (business rules only):
 | Moment | Command |
 |---|---|
 | Start | `/qa-run <tracker/wiki links>` |
-| After approving the lists | `/tuskr-import` (CSV of the manual cases) |
+| Before approving the lists | `/challenge-test-cases` (runs automatically inside `/qa-run`) |
 | To automate the API tests | "start the automated ones" |
 | Before closing (first time in the session) | `! $env:JIRA_TOKEN = '...'` |
 | Closing | `/jira-comment <tickets> "<path to the PDF>"` |
+| After a deploy | `/reconcile-pending-prod-tests` |
+| To fill out a QA report | `/test-plan-report` |

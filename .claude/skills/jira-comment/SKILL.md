@@ -1,9 +1,9 @@
 ---
 name: jira-comment
-description: Closes tracker tickets after a QA run — posts ONE comment per ticket (description + commit/PR links + evidence link), attaches the evidence PDF to the ticket, and moves the tickets to the review status. Trigger with /jira-comment or when the user asks to comment, attach evidence, and/or move tickets to review.
+description: Closes tracker tickets after a QA run — links the commit, posts ONE comment per ticket (description + commit/PR links + evidence link), attaches the evidence PDF to the ticket, and moves the tickets to the review status. Trigger with /jira-comment or when the user asks to comment, attach evidence, and/or move tickets to review.
 ---
 
-# Closing a ticket (comment + evidence + review status)
+# Closing a ticket (commit link + comment + evidence + review status)
 
 Two valid modes:
 
@@ -15,14 +15,32 @@ Two valid modes:
 Expected input: a list of ticket keys, optionally the path to the evidence PDF and the
 commit/PR links.
 
-Mandatory order: **1) evidence → 2) comment → 3) transition.**
-Never transition before the comment exists.
+Mandatory order: **1) link the commit in the dev panel → 2) evidence → 3) comment →
+4) transition.** The review transition is always the last step — never transition before
+the comment exists, and never in the same batch where the commit was just linked.
 
 ## Configuration
 
 Read from the environment: `JIRA_SITE`, `JIRA_EMAIL`, `JIRA_PROJECT`, `JIRA_TOKEN`,
 `REVIEW_STATUS_NAME`, `EVIDENCE_DIR`. Nothing about the site, project, or workflow is
 hard-coded in this skill.
+
+## 0. Link the commit — native dev panel, NOT a comment
+
+The real link lives in the tracker's own development panel (its native VCS integration),
+and it's created by the **ticket key appearing in the commit message** — there's no API
+call that attaches a commit after the fact.
+
+1. **Before committing**, put the ticket key in the message, ideally in the title
+   (`PROJ-123: <summary>`). A commit serving two tickets cites both keys.
+2. **Push.** Without a push there's no link — the integration reads the remote, not the
+   local repo.
+3. **Verify** the panel picked it up (fetch the ticket's development-panel field) before
+   moving on.
+4. If it didn't, it may be integration latency (wait and recheck once) or a missing/wrong
+   key. **Don't compensate with a comment** — report that the native link didn't happen.
+5. A commit that doesn't belong to the ticket (or a ticket with no commit) → don't link
+   anything, don't invent a link. State that there's no commit for that ticket.
 
 ## 1. Evidence (PDF) — native attachment on the ticket
 
@@ -67,6 +85,13 @@ The link in the comment must be the shareable URL, never a local path.
 Use the tracker MCP's add-comment tool. ONE comment per ticket, never two. Each ticket gets
 only its own commit.
 
+### Format: plain markdown, and only markdown
+
+Always submit the body as plain markdown — never mix in the tracker's own legacy wiki
+markup. Since the add-comment call usually returns the saved body, **read it back** and
+confirm no leftover legacy markup before moving on; that's the failure mode that only
+shows up after posting.
+
 Structure:
 
 1. **Descriptive body** — what was automated/tested and validated in staging, in short
@@ -96,5 +121,5 @@ For each ticket:
 
 ## At the end
 
-Report per ticket: comment posted (yes/no), the evidence link used, final status. List
-explicitly what was left pending and why.
+Report per ticket: commit linked (yes/no), comment posted (yes/no), the evidence link used,
+final status. List explicitly what was left pending and why.

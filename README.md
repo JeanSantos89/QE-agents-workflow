@@ -1,7 +1,7 @@
 # QE agents workflow
 
 A quality engineering workflow built entirely as agent configuration: one slash command,
-one skill, and seven subagents that carry a ticket from *"here are the links"* to *"the card
+four skills, and six subagents that carry a ticket from *"here are the links"* to *"the card
 is in product review, with evidence attached"*.
 
 No framework, no dependencies, no code to run. It's Markdown — prompts with sharp
@@ -37,17 +37,21 @@ itself is a separate project: **[QA-memory](https://github.com/JeanSantos89/QA-m
    ├─ context (memory first → live lookup only if needed)
    ├─ repo recon in parallel (commit / assignee / files / endpoints touched)
    ├─ two lists: manual MVP + API/contract
+   ├─ /challenge-test-cases → anti-slop gate (requirement + hallucination judges)
    └─ ⏸ you approve → the spec is frozen as shared subagent memory
-          ├─ /tuskr-import → CSV for the test manager
           └─ "start the automated ones" → scout → author → healer
                  └─ ⏸ you commit
-                        └─ /jira-comment → evidence, comment, transition
+                        └─ /jira-comment → commit link, evidence, comment, transition
                                └─ ⏸ you approve the memory diff
 ```
 
+Two more skills run outside this main loop: `/reconcile-pending-prod-tests` (run after a
+deploy, to recover coverage that was disabled pending it) and `/test-plan-report` (turns a
+finished evidence file into a filled-out QA report template).
+
 Full detail, including the pitfalls at each step, is in **[WORKFLOW.md](WORKFLOW.md)**.
 
-## The seven subagents
+## The six subagents
 
 Each one has a narrow scope and a defined refusal.
 
@@ -59,7 +63,18 @@ Each one has a narrow scope and a defined refusal.
 | `automation-scout` | Maps how the automation repo already does things — patterns, auth, fixtures, tags | Write anything; suggest a mutation against production |
 | `api-test-author` | Writes the minimum viable API/contract tests and validates them | Commit; report ready without the pasted runner output |
 | `test-healer` | Classifies a failure as app bug vs. flaky test | Loosen an assertion to hide a real bug |
-| `tuskr-import` | Exports the manual cases to CSV | Need an API token for a CSV-only path |
+
+A seventh agent, `daily-briefing`, sits outside the ticket workflow — it's a personal
+routine agent that summarizes the day's open tickets against yesterday's snapshot.
+
+## The four skills
+
+| Skill | Role |
+|---|---|
+| `challenge-test-cases` | Two independent judges review a generated test-case list against requirements and against the real code, before a human approves it |
+| `jira-comment` | Links the commit, attaches evidence, posts the comment, moves the ticket to review |
+| `reconcile-pending-prod-tests` | Recovers production coverage that was disabled pending a deploy, once the deploy has actually shipped |
+| `test-plan-report` | Turns a finished evidence file into the fields of a standard QA report template |
 
 ## What's in here
 
@@ -67,13 +82,13 @@ Each one has a narrow scope and a defined refusal.
 README.md          WORKFLOW.md          .env.example
 .claude/
   commands/qa-run.md                    the orchestrator entry point
-  skills/jira-comment/                  evidence → comment → transition
-  agents/*.md                           the seven subagents
+  skills/*.md                           the four skills above
+  agents/*.md                           the six subagents + daily-briefing
 ```
 
-Tools named are real and swappable: Jira as tracker and wiki, Tuskr for manual test cases,
-Playwright for automation, GitHub Actions for CI. Nothing is tied to a specific company,
-product, or repository — all of that is configuration.
+Tools named are real and swappable: Jira as tracker and wiki, Playwright for automation,
+GitHub Actions for CI. Nothing is tied to a specific company, product, or repository — all
+of that is configuration.
 
 ## Setup
 
@@ -94,9 +109,6 @@ product, or repository — all of that is configuration.
 
 **Different tracker.** The context agents reach the tracker through an MCP server. Swap the
 tool names in `live-context.md` and `jira-comment/SKILL.md`; the flow is unchanged.
-
-**Different test manager.** `tuskr-import` writes a four-column CSV. Change the header to
-whatever your importer expects.
 
 **No automation repo yet.** `automation-scout` reports "greenfield" and proposes a minimal
 structure rather than inventing patterns. That's intended behavior, not a failure.

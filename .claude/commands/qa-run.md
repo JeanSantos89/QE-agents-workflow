@@ -1,5 +1,5 @@
 ---
-description: QA orchestrator — takes tracker/wiki links and returns context + commit/assignee + 2 lists (manual MVP and API/contract). On consensus, freezes api-tests-spec.md. Usage: /qa-run <links>.
+description: QA orchestrator — takes tracker/wiki links and returns context + commit/assignee + 2 lists (manual MVP and API/contract), passed through the challenge-test-cases gate. On consensus, freezes api-tests-spec.md. Usage: /qa-run <links>.
 ---
 
 # /qa-run — QA orchestrator (links → 2 lists → spec)
@@ -32,12 +32,18 @@ Call `create-tests` with the consolidated context.
   APIs the recon showed had changed. A purely visual/UI ticket produces 0 API tests. Titles
   and what each one validates only — no test code here.
 
-Present everything in a single response: summary + recon (commit/assignee/files) + both lists.
+### 4. Challenge the lists
+Call the `challenge-test-cases` skill on both lists before presenting them for approval —
+two independent judges (requirement anchor + code hallucination), each in a clean context.
+Apply CUT/REWRITE verdicts that cite a source; a verdict with no source is discarded.
 
-### 4. Consensus
+Present everything in a single response: summary + recon (commit/assignee/files) + both
+lists, already passed through the gate.
+
+### 5. Consensus
 Discuss with the user and adjust both lists until they approve.
 
-### 5. Freeze the contract (only after explicit approval)
+### 6. Freeze the contract (only after explicit approval)
 Write `$AUTOMATION_REPO_PATH/api-tests-spec.md` containing:
 - Ticket context (summary).
 - Commit / assignee / touched files / affected APIs.
@@ -47,9 +53,9 @@ Write `$AUTOMATION_REPO_PATH/api-tests-spec.md` containing:
 This file is the shared memory of the automation subagents — they cannot see this
 conversation.
 
-Then tell the user:
-- For the manual CSV: `/tuskr-import` (manual cases only).
-- To automate the API tests: say "start the automated ones" → `api-test-author`.
+Then tell the user: to automate the API tests, say "start the automated ones" →
+`api-test-author`. The manual list stays in the frozen spec as the source of truth; it
+has no separate export step.
 
 ## Rules
 - This command does not automate, does not write test code, does not commit.
