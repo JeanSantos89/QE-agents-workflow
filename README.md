@@ -1,5 +1,7 @@
 # QE agents workflow
 
+![QE agents workflow banner](./banner.png)
+
 A quality engineering workflow built entirely as agent configuration: one slash command,
 four skills, and six subagents that carry a ticket from *"here are the links"* to *"the card
 is in product review, with evidence attached"*.
